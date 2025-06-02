@@ -1,0 +1,15 @@
+#cloud-config
+
+# Set hostname
+hostname: rocky-server
+
+# Create the mangale user with sudo privileges
+users:
+  - name: mangale
+    groups: wheel
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash
+    lock_passwd: true
+    # Use SSH key authentication instead of password
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFmk4U9AcTGUd2ZbdDLAQaealBWsIcz+I5I8T3Ef2gKM nkp@nkp-AHV

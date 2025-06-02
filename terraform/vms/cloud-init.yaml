@@ -1,0 +1,57 @@
+#cloud-config
+# Set hostname
+hostname: haproxy
+
+# Create the mangale user with sudo privileges
+users:
+  - name: mangale
+    groups: wheel
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash
+    lock_passwd: true
+    # Use SSH key authentication instead of password
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFmk4U9AcTGUd2ZbdDLAQaealBWsIcz+I5I8T3Ef2gKM nkp@nkp-AHV
+
+# Package management
+package_update: true
+package_upgrade: true
+packages:
+  - haproxy
+  - firewalld
+
+write_files:
+  - path: /etc/haproxy/haproxy.cfg
+    content: |
+      global
+          log /dev/log local0
+          log /dev/log local1 notice
+          daemon
+          maxconn 2048
+
+      defaults
+          log     global
+          mode    tcp
+          option  tcplog
+          timeout connect 10s
+          timeout client  1m
+          timeout server  1m
+
+      frontend kubernetes-api
+          bind *:6443
+          default_backend kubernetes-masters
+
+      backend kubernetes-masters
+          balance roundrobin
+          option tcp-check
+          mode tcp
+          server controlplane-1 192.168.187.146:6443 check
+          server controlplane-2 192.168.187.30:6443 check
+
+runcmd:
+  - systemctl enable firewalld
+  - systemctl start firewalld
+  - firewall-cmd --add-port=6443/tcp --permanent
+  - firewall-cmd --reload
+  - systemctl enable haproxy
+  - systemctl restart haproxy

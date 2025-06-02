@@ -1,0 +1,49 @@
+---
+- name: Configure Kubernetes nodes
+  hosts: controlplane-1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Update dnf cache
+      dnf:
+        update_cache: yes
+        
+    - name: Add Docker repository
+      get_url:
+        url: https://download.docker.com/linux/rhel/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: '0644'
+
+    - name: Import Docker GPG key
+      rpm_key:
+        state: present
+        key: https://download.docker.com/linux/rhel/gpg
+
+    - name: Install containerd
+      dnf:
+        name: containerd.io
+        state: present
+
+    - name: Create containerd config directory
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: '0755'
+
+    - name: Generate default containerd config
+      shell: containerd config default > /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+
+    - name: Configure containerd to use systemd cgroup driver
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: yes
+        daemon_reload: yes

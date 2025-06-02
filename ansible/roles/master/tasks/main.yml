@@ -1,0 +1,28 @@
+---
+# Master-specific tasks for Rocky Linux 9
+
+- name: Set hostname based on inventory name
+  hostname:
+    name: "{{ inventory_hostname }}"
+  register: hostname_changed
+
+- name: Update /etc/hosts with own hostname
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+localhost'
+    line: "127.0.0.1 localhost {{ inventory_hostname }}"
+    state: present
+
+- name: Install additional packages for master nodes
+  dnf:
+    name:
+      - nfs-utils
+    state: present
+
+- name: Set hostname resolution for cluster communication
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
+    state: present
+  loop: "{{ groups['k8s_masters'] + groups['k8s_workers'] }}"
+
